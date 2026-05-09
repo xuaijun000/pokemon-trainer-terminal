@@ -180,6 +180,17 @@ img{max-width:100%;display:block}
 .task-row span,.log-row span,.settings-row span{display:block;color:var(--muted);font-size:.76rem;margin-top:4px;line-height:1.45}
 .settings-row select{width:100%;height:38px;margin-top:8px;border:1px solid var(--line);border-radius:8px;background:#151923;color:var(--text);padding:0 10px}
 
+.game-ver-bar{display:flex;gap:8px;overflow-x:auto;padding-bottom:14px;margin-bottom:2px;scrollbar-width:none}
+.game-ver-bar::-webkit-scrollbar{display:none}
+.game-ver-btn{flex-shrink:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:10px 14px;color:var(--muted);text-align:left;min-width:130px;transition:border-color .15s,color .15s,background .15s}
+.game-ver-btn:hover{border-color:var(--faint);color:var(--text)}
+.game-ver-btn.is-active{border-color:rgba(80,196,216,.55);background:var(--panel-2);color:var(--text);box-shadow:inset 0 -2px 0 var(--cyan)}
+.game-ver-btn.is-placeholder{opacity:.55;cursor:default}
+.ver-gen{font-size:.62rem;color:var(--cyan);text-transform:uppercase;letter-spacing:.1em}
+.ver-label{font-size:.9rem;font-weight:700;line-height:1.2}
+.ver-sub{font-size:.68rem;color:var(--faint);line-height:1.3}
+.game-ver-btn.is-active .ver-gen{color:var(--cyan)}
+.ver-placeholder{min-height:180px}
 .lookup-panel{grid-column:span 2}
 .lookup-format-select{height:34px;border:1px solid var(--line);border-radius:8px;background:var(--panel-2);color:var(--text);padding:0 10px}
 .lookup-body{display:grid;grid-template-columns:260px minmax(0,1fr);min-height:420px}

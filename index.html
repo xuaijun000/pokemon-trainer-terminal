@@ -99,21 +99,25 @@
           </div>
         </div>
 
+        <div id="game-ver-bar" class="game-ver-bar"></div>
+
         <div class="content-grid games-grid-layout">
           <section class="panel map-panel">
             <div class="panel-head">
               <div>
-                <p class="eyebrow">FireRed / LeafGreen</p>
+                <p class="eyebrow" id="map-ver-label">FireRed / LeafGreen</p>
                 <h3>地区地图</h3>
               </div>
               <button class="text-btn" type="button" id="reset-story">重置进度</button>
             </div>
-            <div class="map-frame">
-              <img src="assets/map/火红叶绿全局地图.png" alt="火红叶绿全局地图">
-            </div>
-            <div class="map-strip">
-              <img src="assets/map/七岛缩略图.png" alt="七岛缩略图">
-              <span>七岛区域已作为独立资源移植，可继续接原站热点层。</span>
+            <div id="map-frame-wrap">
+              <div class="map-frame">
+                <img id="map-img" src="assets/map/火红叶绿全局地图.png" alt="火红叶绿全局地图">
+              </div>
+              <div class="map-strip" id="map-strip">
+                <img src="assets/map/七岛缩略图.png" alt="七岛缩略图">
+                <span>七岛区域已作为独立资源移植，可继续接原站热点层。</span>
+              </div>
             </div>
           </section>
 

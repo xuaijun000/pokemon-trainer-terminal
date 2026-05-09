@@ -23,12 +23,26 @@
   const GEN_RANGE = { 1:[1,151], 2:[152,251], 3:[252,386] };
   const RESULT_ZH = { win:'胜利', lose:'失败', draw:'平局' };
 
+  const GAME_VERSIONS = [
+    { id:'frlg', label:'火红 / 叶绿', sub:'FireRed · LeafGreen', gen:'Gen III', active:true,
+      mapImg:'assets/map/火红叶绿全局地图.png',
+      mapStripHtml:`<img src="assets/map/七岛缩略图.png" alt="七岛缩略图"><span>七岛区域已移植，可继续接热点层。</span>` },
+    { id:'rby',  label:'红 / 蓝 / 黄',  sub:'Red · Blue · Yellow',  gen:'Gen I',   active:false },
+    { id:'gsc',  label:'金 / 银 / 水晶', sub:'Gold · Silver · Crystal', gen:'Gen II',  active:false },
+    { id:'rse',  label:'红宝石 / 绿宝石', sub:'Ruby · Sapphire · Emerald', gen:'Gen III', active:false },
+    { id:'dppt', label:'钻石 / 珍珠 / 白金', sub:'Diamond · Pearl · Platinum', gen:'Gen IV', active:false },
+    { id:'hgss', label:'心金 / 魂银',   sub:'HeartGold · SoulSilver', gen:'Gen IV', active:false },
+    { id:'bw',   label:'黑 / 白',       sub:'Black · White',        gen:'Gen V',   active:false },
+    { id:'sv',   label:'朱 / 紫',       sub:'Scarlet · Violet',     gen:'Gen IX',  active:false },
+  ];
+
   const state = {
     view: 'dex',
     query: '',
     officialDex: [],
     activeDexId: null,
     activeDetailFormNum: null,
+    gameVersion: 'frlg',
     team: loadJson(STORAGE.team, []),
     records: loadJson(STORAGE.records, []),
     story: loadJson(STORAGE.story, {}),
@@ -304,7 +318,54 @@
     renderDex();
   }
 
+  function renderGameVersionBar(){
+    const bar = $('#game-ver-bar');
+    if(!bar) return;
+    bar.innerHTML = GAME_VERSIONS.map(v => `
+      <button class="game-ver-btn ${v.id === state.gameVersion ? 'is-active' : ''} ${v.active ? '' : 'is-placeholder'}"
+              type="button" data-ver="${v.id}" ${v.active ? '' : 'title="即将支持"'}>
+        <span class="ver-gen">${v.gen}</span>
+        <span class="ver-label">${v.label}</span>
+        <span class="ver-sub">${v.sub || ''}</span>
+      </button>
+    `).join('');
+    $all('[data-ver]').forEach(btn => btn.addEventListener('click', () => {
+      const ver = GAME_VERSIONS.find(v => v.id === btn.dataset.ver);
+      if(!ver) return;
+      state.gameVersion = ver.id;
+      renderGames();
+    }));
+  }
+
   function renderGames(){
+    renderGameVersionBar();
+    const ver = GAME_VERSIONS.find(v => v.id === state.gameVersion) || GAME_VERSIONS[0];
+    const label = $('#map-ver-label');
+    if(label) label.textContent = ver.sub || ver.label;
+    if(!ver.active){
+      const placeholder = `<div class="empty-state ver-placeholder"><strong>${ver.label}</strong><span>此版本数据待接入，敬请期待。</span></div>`;
+      const storyEl = $('#story-list');
+      const encounterEl = $('#encounter-list');
+      const mapWrap = $('#map-frame-wrap');
+      if(storyEl) storyEl.innerHTML = placeholder;
+      if(encounterEl) encounterEl.innerHTML = placeholder;
+      if(mapWrap) mapWrap.innerHTML = placeholder;
+      const prog = $('#story-progress');
+      if(prog) prog.textContent = '—';
+      return;
+    }
+    const mapImg = $('#map-img');
+    const mapStrip = $('#map-strip');
+    const mapWrap = $('#map-frame-wrap');
+    if(mapWrap && !mapWrap.querySelector('.map-frame')){
+      mapWrap.innerHTML = `
+        <div class="map-frame"><img id="map-img" src="${ver.mapImg || ''}" alt=""></div>
+        <div class="map-strip" id="map-strip">${ver.mapStripHtml || ''}</div>
+      `;
+    } else if(mapImg) {
+      mapImg.src = ver.mapImg || '';
+      if(mapStrip && ver.mapStripHtml) mapStrip.innerHTML = ver.mapStripHtml;
+    }
     renderStory();
     renderEncounters();
   }

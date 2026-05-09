@@ -42,6 +42,7 @@
   const items = registry.items || [];
   const championsByNum = new Map(champions.map(p => [Number(p.num), p]));
   const championsBySlug = new Map(champions.map(p => [p.slug, p]));
+  const movesBySlug = new Map(moves.map(m => [m.slug, m]));
 
   function $(sel, root=document){ return root.querySelector(sel); }
   function $all(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
@@ -68,6 +69,32 @@
       const color = TYPE_COLOR[t] || '#aab';
       return `<span class="type-pill" style="color:${color}">${TYPE_ZH[t] || t}</span>`;
     }).join('')}</div>`;
+  }
+  function abilityName(slug){
+    return slug.split('-').map(w => w ? w[0].toUpperCase() + w.slice(1) : '').join(' ');
+  }
+  function buildLearnset(learnset){
+    const matched = learnset
+      .map(slug => movesBySlug.get(slug))
+      .filter(Boolean)
+      .sort((a, b) => (b.power ?? 0) - (a.power ?? 0))
+      .slice(0, 20);
+    if(!matched.length) return '';
+    return `
+      <div class="detail-section">
+        <p class="eyebrow">Learnset · ${learnset.length} 招式</p>
+        <div class="learnset-list">
+          ${matched.map(m => `
+            <div class="learnset-card">
+              <span class="learnset-type" style="color:${TYPE_COLOR[m.type] || '#aab'}">${TYPE_ZH[m.type] || m.type}</span>
+              <strong>${esc(m.name)}</strong>
+              <span class="learnset-meta">${m.cat === 'physical' ? '物理' : m.cat === 'special' ? '特殊' : '变化'}</span>
+              ${m.power ? `<b class="learnset-power">${m.power}</b>` : '<span class="learnset-dash">—</span>'}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
   }
   function taskState(){
     const all = loadJson(STORAGE.tasks, {});
@@ -167,6 +194,9 @@
     const entry = getDexEntries().find(e => e.id === id);
     if(!entry) return;
     const stats = entry.stats || {};
+    const statTotal = Object.values(stats).reduce((sum, v) => sum + Number(v), 0);
+    const abilitySlugs = entry.champion?.abilities || [];
+    const learnset = entry.champion?.learnset || [];
     $('#dex-detail').innerHTML = `
       <div class="pkm-detail">
         <div class="pkm-detail-top">
@@ -184,8 +214,22 @@
               const value = Number(stats[key] || 0);
               return `<div class="stat-row"><span>${label}</span><span class="stat-bar"><span class="stat-fill" style="width:${Math.min(100,value / 160 * 100)}%"></span></span><b>${value}</b></div>`;
             }).join('')}
+            <div class="stat-row stat-total-row">
+              <span>总计</span>
+              <span class="stat-bar"><span class="stat-fill stat-fill-total" style="width:${Math.min(100, statTotal / 720 * 100)}%"></span></span>
+              <b>${statTotal}</b>
+            </div>
           </div>
         ` : '<p class="pkm-desc">这只宝可梦暂未接入 Champions 种族值数据。</p>'}
+        ${abilitySlugs.length ? `
+          <div class="detail-section">
+            <p class="eyebrow">特性</p>
+            <div class="ability-row">
+              ${abilitySlugs.map(slug => `<span class="ability-chip">${esc(abilityName(slug))}</span>`).join('')}
+            </div>
+          </div>
+        ` : ''}
+        ${buildLearnset(learnset)}
         <div class="detail-actions">
           <button class="action-btn primary" type="button" id="detail-add-team">加入队伍</button>
           <button class="action-btn" type="button" id="detail-set-partner">设为伙伴</button>

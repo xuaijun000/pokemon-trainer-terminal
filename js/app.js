@@ -45,6 +45,13 @@
   const championsByNum = new Map(champions.map(p => [Number(p.num), p]));
   const championsBySlug = new Map(champions.map(p => [p.slug, p]));
   const movesBySlug = new Map(moves.map(m => [m.slug, m]));
+  // num in Champions data is a roster index, not the real Pokédex ID.
+  // Parse the actual dex ID from spriteUrl (e.g. ".../pokemon/6.png" → 6).
+  const championsByDexId = new Map();
+  champions.forEach(p => {
+    const m = (p.spriteUrl || '').match(/\/(\d+)\.png/);
+    if(m){ const id = Number(m[1]); if(!championsByDexId.has(id)) championsByDexId.set(id, p); }
+  });
 
   function $(sel, root=document){ return root.querySelector(sel); }
   function $all(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
@@ -127,13 +134,20 @@
     }
   }
 
+  function dexIdFromSprite(p){
+    const m = (p.spriteUrl || '').match(/\/(\d+)\.png/);
+    return m ? Number(m[1]) : null;
+  }
   function getDexEntries(){
     const official = state.officialDex.length
       ? state.officialDex.map(row => {
-          const c = championsByNum.get(Number(row.id));
+          const c = championsByDexId.get(Number(row.id));
           return { id:Number(row.id), zhName:row.zhName, descZh:row.descZh, champion:c, types:c?.types || [], stats:c?.stats || null, spriteUrl:c?.spriteUrl };
         })
-      : champions.map(p => ({ id:Number(p.num), zhName:p.name, descZh:'Champions 对战数据已移植。完整中文图鉴可通过本地服务器载入 JSON 后显示。', champion:p, types:p.types || [], stats:p.stats || null, spriteUrl:p.spriteUrl }));
+      : champions.map(p => {
+          const id = dexIdFromSprite(p) ?? Number(p.num);
+          return { id, zhName:p.name, descZh:'Champions 对战数据已移植。完整中文图鉴可通过本地服务器载入 JSON 后显示。', champion:p, types:p.types || [], stats:p.stats || null, spriteUrl:p.spriteUrl };
+        });
     return official.sort((a,b) => a.id - b.id);
   }
 
@@ -242,8 +256,8 @@
         </div>
       </div>
     `;
-    $('#detail-add-team').addEventListener('click', () => addToTeam(entry.id));
-    $('#detail-set-partner').addEventListener('click', () => setPartner(entry.id));
+    $('#detail-add-team').addEventListener('click', () => { if(entry.champion) addToTeam(Number(entry.champion.num)); });
+    $('#detail-set-partner').addEventListener('click', () => { if(entry.champion) setPartner(Number(entry.champion.num)); });
     renderDex();
   }
 

@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pokemon Trainer Terminal</title>
+  <link rel="stylesheet" href="css/app.css">
+  <script src="data/battle_registry.js"></script>
+  <script src="data/pkm_champions_data.js"></script>
+  <script src="data/moves_champions_data.js"></script>
+  <script src="data/items_champions_data.js"></script>
+  <script src="data/frlg_story.js"></script>
+  <script src="data/frlg_encounters.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <aside class="rail" aria-label="主导航">
+      <div class="brand">
+        <span class="brand-mark">PT</span>
+        <span>
+          <strong>Trainer Terminal</strong>
+          <small>图鉴 / 游戏 / 对战</small>
+        </span>
+      </div>
+      <nav class="main-nav">
+        <button class="nav-btn is-active" type="button" data-view="dex" title="图鉴">
+          <span>图鉴</span>
+        </button>
+        <button class="nav-btn" type="button" data-view="games" title="游戏">
+          <span>游戏</span>
+        </button>
+        <button class="nav-btn" type="button" data-view="battle" title="对战">
+          <span>对战</span>
+        </button>
+      </nav>
+      <div class="rail-card">
+        <span class="rail-kicker">今日终端</span>
+        <strong id="today-focus">载入中</strong>
+        <p id="today-copy">准备你的下一段冒险记录。</p>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">PIXELFISH migration prototype</p>
+          <h1 id="view-title">训练师图鉴</h1>
+        </div>
+        <label class="global-search">
+          <span>搜索</span>
+          <input id="global-search" type="search" placeholder="宝可梦、地点、招式、道具">
+        </label>
+      </header>
+
+      <section class="view is-active" id="view-dex" aria-labelledby="dex-title">
+        <div class="hero hero-dex">
+          <img src="assets/宝可梦 Tab Banner.jpg" alt="">
+          <div class="hero-copy">
+            <p class="eyebrow">Pokedex</p>
+            <h2 id="dex-title">图鉴数据库</h2>
+            <p>用本地中文图鉴和 Champions 数据做第一版检索，后续可以接回原站的完整详情页。</p>
+          </div>
+        </div>
+
+        <div class="content-grid dex-grid-layout">
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Browse</p>
+                <h3>宝可梦索引</h3>
+              </div>
+              <select id="dex-filter">
+                <option value="all">全部世代</option>
+                <option value="1">第一世代</option>
+                <option value="2">第二世代</option>
+                <option value="3">第三世代</option>
+                <option value="champions">Champions 可用</option>
+              </select>
+            </div>
+            <div class="dex-list" id="dex-list"></div>
+          </section>
+
+          <section class="panel detail-panel" id="dex-detail">
+            <div class="empty-state">
+              <strong>选择一只宝可梦</strong>
+              <span>查看中文描述、属性、种族值和可加入队伍的入口。</span>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-games" aria-labelledby="games-title">
+        <div class="hero hero-games">
+          <img src="assets/游戏库 Tab Banner.jpg" alt="">
+          <div class="hero-copy">
+            <p class="eyebrow">Adventure</p>
+            <h2 id="games-title">游戏记录中心</h2>
+            <p>第一版先以火红 / 叶绿为主，保留路线、地图、遭遇和通关清单的接口。</p>
+          </div>
+        </div>
+
+        <div class="content-grid games-grid-layout">
+          <section class="panel map-panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">FireRed / LeafGreen</p>
+                <h3>地区地图</h3>
+              </div>
+              <button class="text-btn" type="button" id="reset-story">重置进度</button>
+            </div>
+            <div class="map-frame">
+              <img src="assets/map/火红叶绿全局地图.png" alt="火红叶绿全局地图">
+            </div>
+            <div class="map-strip">
+              <img src="assets/map/七岛缩略图.png" alt="七岛缩略图">
+              <span>七岛区域已作为独立资源移植，可继续接原站热点层。</span>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Story</p>
+                <h3>通关清单</h3>
+              </div>
+              <span class="counter" id="story-progress">0%</span>
+            </div>
+            <div class="story-list" id="story-list"></div>
+          </section>
+
+          <section class="panel encounters-panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Encounters</p>
+                <h3>遭遇查询</h3>
+              </div>
+              <select id="encounter-location"></select>
+            </div>
+            <div class="encounter-list" id="encounter-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="view-battle" aria-labelledby="battle-title">
+        <div class="hero hero-battle">
+          <img src="assets/宝可梦对战 Tab Banner.jpg" alt="">
+          <div class="hero-copy">
+            <p class="eyebrow">Battle</p>
+            <h2 id="battle-title">对战工作台</h2>
+            <p>队伍构筑、招式检索、道具检索和战绩记录先独立成站，后续再接 Supabase 社区。</p>
+          </div>
+        </div>
+
+        <div class="content-grid battle-grid-layout">
+          <section class="panel team-builder">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Team</p>
+                <h3>我的队伍</h3>
+              </div>
+              <button class="text-btn" type="button" id="clear-team">清空</button>
+            </div>
+            <div class="team-slots" id="team-slots"></div>
+            <label class="mini-search">
+              <span>加入宝可梦</span>
+              <input id="team-search" type="search" placeholder="输入名称或编号">
+            </label>
+            <div class="pick-list" id="team-picks"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Moves</p>
+                <h3>招式检索</h3>
+              </div>
+              <span class="counter" id="move-count"></span>
+            </div>
+            <div class="move-list" id="move-list"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Records</p>
+                <h3>战绩记录</h3>
+              </div>
+              <div class="segmented">
+                <button type="button" data-result="win">胜</button>
+                <button type="button" data-result="lose">负</button>
+                <button type="button" data-result="draw">平</button>
+              </div>
+            </div>
+            <div class="record-summary" id="record-summary"></div>
+            <label class="mini-search">
+              <span>备注</span>
+              <input id="battle-note" type="text" maxlength="80" placeholder="例如：双打，雨天队练习">
+            </label>
+            <div class="record-list" id="record-list"></div>
+          </section>
+
+          <section class="panel items-panel">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Items</p>
+                <h3>道具速查</h3>
+              </div>
+            </div>
+            <div class="item-list" id="item-list"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <button class="partner-orb" id="partner-orb" type="button" aria-label="打开伙伴浮窗">
+    <img src="assets/悬浮球.png" alt="">
+    <span id="partner-orb-name">伙伴</span>
+  </button>
+
+  <aside class="partner-panel" id="partner-panel" aria-label="伙伴浮窗">
+    <div class="partner-head">
+      <div>
+        <p class="eyebrow">Partner</p>
+        <h2 id="partner-name">随身伙伴</h2>
+      </div>
+      <button class="icon-btn" id="partner-close" type="button" aria-label="关闭">×</button>
+    </div>
+    <div class="partner-stage">
+      <img id="partner-bg" src="assets/partner-roster-bg.png" alt="">
+      <img id="partner-sprite" alt="">
+    </div>
+    <div class="partner-tabs">
+      <button class="is-active" type="button" data-partner-tab="status">状态</button>
+      <button type="button" data-partner-tab="training">训练</button>
+      <button type="button" data-partner-tab="tasks">任务</button>
+      <button type="button" data-partner-tab="logs">记录</button>
+      <button type="button" data-partner-tab="settings">设置</button>
+    </div>
+    <div class="partner-body" id="partner-body"></div>
+  </aside>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

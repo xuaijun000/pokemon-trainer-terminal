@@ -33,7 +33,9 @@
     story: loadJson(STORAGE.story, {}),
     partner: null,
     partnerTab: 'status',
-    encountersKey: ''
+    encountersKey: '',
+    lookupId: null,
+    lookupFormat: 'champions'
   };
 
   const registry = window.BATTLE_REGISTRY?.champions || {};
@@ -95,6 +97,10 @@
         </div>
       </div>
     `;
+  }
+  function calcSpeed(base, ev=252, iv=31, level=50, natureBoost=false){
+    const nature = natureBoost ? 1.1 : 1.0;
+    return Math.floor(Math.floor((2 * base + iv + Math.floor(ev / 4)) * level / 100 + 5) * nature);
   }
   function taskState(){
     const all = loadJson(STORAGE.tasks, {});
@@ -306,12 +312,143 @@
     return row?.zh || key.replace(/-/g, ' ').replace(/\b\w/g, ch => ch.toUpperCase());
   }
 
+  function renderLookupSearch(){
+    const q = ($('#lookup-search')?.value || '').trim().toLowerCase();
+    const picksEl = $('#lookup-picks');
+    if(!picksEl) return;
+    if(!q){
+      picksEl.innerHTML = `<div class="lookup-hint"><span>输入名称或编号开始查询</span></div>`;
+      return;
+    }
+    const pool = champions;
+    const picks = pool.filter(p =>
+      String(p.num).includes(q) || p.name.toLowerCase().includes(q) || p.slug.includes(q)
+    ).slice(0, 12);
+    picksEl.innerHTML = picks.map(p => `
+      <button class="pick-card lookup-pick ${state.lookupId === Number(p.num) ? 'is-active' : ''}" type="button" data-lookup="${p.num}">
+        <img src="${esc(spriteFor(p))}" alt="">
+        <span>${esc(p.name)}<small>#${p.num}</small></span>
+      </button>
+    `).join('') || `<div class="lookup-hint"><span>没有找到匹配宝可梦</span></div>`;
+    $all('[data-lookup]').forEach(btn => btn.addEventListener('click', () => {
+      state.lookupId = Number(btn.dataset.lookup);
+      $('#lookup-search').value = '';
+      renderLookupSearch();
+      renderLookupResult();
+    }));
+  }
+
+  function renderLookupResult(){
+    const el = $('#lookup-result');
+    if(!el) return;
+    if(!state.lookupId){
+      el.innerHTML = `<div class="empty-state"><strong>选择一只宝可梦</strong><span>搜索并点击查看对战数据。</span></div>`;
+      return;
+    }
+    const p = championsByNum.get(state.lookupId);
+    if(!p){ el.innerHTML = ''; return; }
+
+    const stats = p.stats || {};
+    const statTotal = Object.values(stats).reduce((sum, v) => sum + Number(v), 0);
+    const baseSpeed = Number(stats.spe || 0);
+
+    const spd       = calcSpeed(baseSpeed, 252, 31, 50, false);
+    const spdTimid  = calcSpeed(baseSpeed, 252, 31, 50, true);
+    const spdScarf  = Math.floor(spd * 1.5);
+    const spdScarfT = Math.floor(spdTimid * 1.5);
+    const spdTW     = spd * 2;
+
+    const speedSorted = champions.slice().sort((a, b) => (Number(a.stats?.spe)||0) - (Number(b.stats?.spe)||0));
+    const myIdx = speedSorted.findIndex(c => Number(c.num) === Number(p.num));
+    const rank = myIdx + 1;
+    const nearbyAbove = speedSorted.slice(myIdx + 1, myIdx + 4);
+    const nearbyBelow = speedSorted.slice(Math.max(0, myIdx - 3), myIdx).reverse();
+
+    const offMoves = (p.learnset || [])
+      .map(slug => movesBySlug.get(slug))
+      .filter(m => m && m.power)
+      .sort((a, b) => (b.power ?? 0) - (a.power ?? 0))
+      .slice(0, 8);
+
+    el.innerHTML = `
+      <div class="lookup-inner">
+        <div class="lookup-header">
+          <div class="pkm-art lookup-art">
+            <img src="${esc(spriteFor(p))}" alt="${esc(p.name)}">
+          </div>
+          <div class="lookup-name-block">
+            <p class="eyebrow">#${String(p.num).padStart(4,'0')} · Pokemon Champions</p>
+            <h3>${esc(p.name)}</h3>
+            ${typePills(p.types || [])}
+            <div class="ability-row" style="margin-top:8px">
+              ${(p.abilities || []).map(slug => `<span class="ability-chip">${esc(abilityName(slug))}</span>`).join('')}
+            </div>
+          </div>
+          <div class="lookup-stat-block">
+            <div class="stat-list">
+              ${Object.entries(STAT_LABEL).map(([key, label]) => {
+                const val = Number(stats[key] || 0);
+                return `<div class="stat-row"><span>${label}</span><span class="stat-bar"><span class="stat-fill" style="width:${Math.min(100,val/160*100)}%"></span></span><b>${val}</b></div>`;
+              }).join('')}
+              <div class="stat-row stat-total-row">
+                <span>总计</span>
+                <span class="stat-bar"><span class="stat-fill stat-fill-total" style="width:${Math.min(100,statTotal/720*100)}%"></span></span>
+                <b>${statTotal}</b>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="lookup-sections">
+          <div class="lookup-section">
+            <p class="eyebrow">速度线 · Lv.50 · 252 EV / 31 IV</p>
+            <div class="speed-grid">
+              <div class="speed-row"><span>中性</span><b>${spd}</b></div>
+              <div class="speed-row"><span>+速度性格（Timid / Jolly）</span><b>${spdTimid}</b></div>
+              <div class="speed-row"><span>讲究围巾（中性）</span><b>${spdScarf}</b></div>
+              <div class="speed-row"><span>讲究围巾（+速度性格）</span><b>${spdScarfT}</b></div>
+              <div class="speed-row"><span>顺风（×2）</span><b>${spdTW}</b></div>
+            </div>
+            <p class="speed-rank-text">Champions 速度排名：第 <b>${rank}</b> / ${speedSorted.length}</p>
+            <div class="speed-tier-chart">
+              ${nearbyAbove.slice().reverse().map(c => `<span class="speed-chip speed-chip-above">${esc(c.name)}<small>${c.stats?.spe}</small></span>`).join('')}
+              <span class="speed-chip speed-chip-self">${esc(p.name)}<small>${baseSpeed}</small></span>
+              ${nearbyBelow.map(c => `<span class="speed-chip speed-chip-below">${esc(c.name)}<small>${c.stats?.spe}</small></span>`).join('')}
+            </div>
+          </div>
+
+          ${offMoves.length ? `
+            <div class="lookup-section">
+              <p class="eyebrow">主要招式（威力前 8）</p>
+              <div class="learnset-list">
+                ${offMoves.map(m => `
+                  <div class="learnset-card">
+                    <span class="learnset-type" style="color:${TYPE_COLOR[m.type]||'#aab'}">${TYPE_ZH[m.type]||m.type}</span>
+                    <strong>${esc(m.name)}</strong>
+                    <span class="learnset-meta">${m.cat==='physical'?'物理':m.cat==='special'?'特殊':'变化'}</span>
+                    <b class="learnset-power">${m.power}</b>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderLookup(){
+    renderLookupSearch();
+    renderLookupResult();
+  }
+
   function renderBattle(){
     renderTeam();
     renderTeamPicks();
     renderMoves();
     renderItems();
     renderRecords();
+    renderLookup();
   }
 
   function addToTeam(num){
@@ -601,6 +738,8 @@
       saveJson(STORAGE.story, state.story);
       renderStory();
     });
+    $('#lookup-search').addEventListener('input', renderLookupSearch);
+    $('#lookup-format').addEventListener('change', e => { state.lookupFormat = e.target.value; renderLookup(); });
     $('#partner-orb').addEventListener('click', () => $('#partner-panel').classList.toggle('is-open'));
     $('#partner-close').addEventListener('click', () => $('#partner-panel').classList.remove('is-open'));
     $all('[data-partner-tab]').forEach(btn => btn.addEventListener('click', () => {

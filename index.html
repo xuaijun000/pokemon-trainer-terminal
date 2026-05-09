@@ -208,6 +208,34 @@
             </div>
             <div class="item-list" id="item-list"></div>
           </section>
+
+          <section class="panel lookup-panel" id="lookup-panel" aria-label="对战速查">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Battle Lookup</p>
+                <h3>对战速查</h3>
+              </div>
+              <select id="lookup-format" class="lookup-format-select">
+                <option value="champions">Pokemon Champions</option>
+                <option value="vgc2025" disabled>VGC 2025（即将支持）</option>
+                <option value="ou" disabled>Showdown OU（即将支持）</option>
+              </select>
+            </div>
+            <div class="lookup-body">
+              <div class="lookup-search-col">
+                <label class="mini-search lookup-search-wrap">
+                  <span>搜索</span>
+                  <input id="lookup-search" type="search" placeholder="宝可梦名称或编号">
+                </label>
+                <div class="lookup-picks" id="lookup-picks">
+                  <div class="lookup-hint"><span>输入名称或编号开始查询</span></div>
+                </div>
+              </div>
+              <div class="lookup-result" id="lookup-result">
+                <div class="empty-state"><strong>选择一只宝可梦</strong><span>搜索并点击查看对战数据。</span></div>
+              </div>
+            </div>
+          </section>
         </div>
       </section>
     </main>

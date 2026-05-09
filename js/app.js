@@ -28,6 +28,7 @@
     query: '',
     officialDex: [],
     activeDexId: null,
+    activeDetailFormNum: null,
     team: loadJson(STORAGE.team, []),
     records: loadJson(STORAGE.records, []),
     story: loadJson(STORAGE.story, {}),
@@ -138,13 +139,24 @@
     const m = (p.spriteUrl || '').match(/\/(\d+)\.png/);
     return m ? Number(m[1]) : null;
   }
+  function getFormChampions(baseSlug){
+    if(!baseSlug) return [];
+    return champions.filter(p => {
+      const id = dexIdFromSprite(p);
+      return id && id >= 10000 && (
+        p.slug === 'mega-' + baseSlug ||
+        p.slug.startsWith('mega-' + baseSlug + '-')
+      );
+    });
+  }
   function getDexEntries(){
     const official = state.officialDex.length
       ? state.officialDex.map(row => {
           const c = championsByDexId.get(Number(row.id));
           return { id:Number(row.id), zhName:row.zhName, descZh:row.descZh, champion:c, types:c?.types || [], stats:c?.stats || null, spriteUrl:c?.spriteUrl };
         })
-      : champions.map(p => {
+      : champions.filter(p => { const id = dexIdFromSprite(p); return id !== null && id < 10000; })
+               .map(p => {
           const id = dexIdFromSprite(p) ?? Number(p.num);
           return { id, zhName:p.name, descZh:'Champions 对战数据已移植。完整中文图鉴可通过本地服务器载入 JSON 后显示。', champion:p, types:p.types || [], stats:p.stats || null, spriteUrl:p.spriteUrl };
         });
@@ -209,26 +221,52 @@
   }
 
   function renderDexDetail(id){
+    if(state.activeDexId !== id) state.activeDetailFormNum = null;
     state.activeDexId = id;
     markTask('pokedex');
     const entry = getDexEntries().find(e => e.id === id);
     if(!entry) return;
-    const stats = entry.stats || {};
+
+    const baseChampion = entry.champion;
+    const display = state.activeDetailFormNum !== null
+      ? (championsByNum.get(state.activeDetailFormNum) || baseChampion)
+      : baseChampion;
+    const forms = getFormChampions(baseChampion?.slug);
+
+    const stats = display?.stats || {};
     const statTotal = Object.values(stats).reduce((sum, v) => sum + Number(v), 0);
-    const abilitySlugs = entry.champion?.abilities || [];
-    const learnset = entry.champion?.learnset || [];
+    const displayTypes = display?.types || entry.types;
+    const displayName = display ? display.name : entry.zhName;
+    const displaySprite = display ? spriteFor(display) : spriteFor(entry);
+
+    const formSelectorHtml = forms.length ? `
+      <div class="form-selector">
+        <button class="form-chip ${state.activeDetailFormNum === null ? 'is-active' : ''}" type="button" data-form-num="base">
+          <img src="${esc(spriteFor(baseChampion || entry))}" alt="">
+          <span>${esc(entry.zhName)}</span>
+        </button>
+        ${forms.map(f => `
+          <button class="form-chip ${state.activeDetailFormNum === Number(f.num) ? 'is-active' : ''}" type="button" data-form-num="${f.num}">
+            <img src="${esc(spriteFor(f))}" alt="">
+            <span>${esc(f.name)}</span>
+          </button>
+        `).join('')}
+      </div>
+    ` : '';
+
     $('#dex-detail').innerHTML = `
       <div class="pkm-detail">
+        ${formSelectorHtml}
         <div class="pkm-detail-top">
-          <div class="pkm-art"><img src="${esc(spriteFor(entry))}" alt=""></div>
+          <div class="pkm-art"><img src="${esc(displaySprite)}" alt=""></div>
           <div>
             <p class="eyebrow">#${String(entry.id).padStart(4,'0')}</p>
-            <h3>${esc(entry.zhName)}</h3>
-            ${typePills(entry.types)}
+            <h3>${esc(displayName)}</h3>
+            ${typePills(displayTypes)}
             <p class="pkm-desc">${esc(entry.descZh || '暂无中文描述。')}</p>
           </div>
         </div>
-        ${entry.stats ? `
+        ${display?.stats ? `
           <div class="stat-list">
             ${Object.entries(STAT_LABEL).map(([key,label]) => {
               const value = Number(stats[key] || 0);
@@ -241,23 +279,28 @@
             </div>
           </div>
         ` : '<p class="pkm-desc">这只宝可梦暂未接入 Champions 种族值数据。</p>'}
-        ${abilitySlugs.length ? `
+        ${display?.abilities?.length ? `
           <div class="detail-section">
             <p class="eyebrow">特性</p>
             <div class="ability-row">
-              ${abilitySlugs.map(slug => `<span class="ability-chip">${esc(abilityName(slug))}</span>`).join('')}
+              ${display.abilities.map(slug => `<span class="ability-chip">${esc(abilityName(slug))}</span>`).join('')}
             </div>
           </div>
         ` : ''}
-        ${buildLearnset(learnset)}
+        ${buildLearnset(display?.learnset || [])}
         <div class="detail-actions">
           <button class="action-btn primary" type="button" id="detail-add-team">加入队伍</button>
           <button class="action-btn" type="button" id="detail-set-partner">设为伙伴</button>
         </div>
       </div>
     `;
-    $('#detail-add-team').addEventListener('click', () => { if(entry.champion) addToTeam(Number(entry.champion.num)); });
-    $('#detail-set-partner').addEventListener('click', () => { if(entry.champion) setPartner(Number(entry.champion.num)); });
+    $all('[data-form-num]').forEach(btn => btn.addEventListener('click', () => {
+      state.activeDetailFormNum = btn.dataset.formNum === 'base' ? null : Number(btn.dataset.formNum);
+      renderDexDetail(id);
+    }));
+    const actionChampion = display || baseChampion;
+    $('#detail-add-team').addEventListener('click', () => { if(actionChampion) addToTeam(Number(actionChampion.num)); });
+    $('#detail-set-partner').addEventListener('click', () => { if(actionChampion) setPartner(Number(actionChampion.num)); });
     renderDex();
   }
 
